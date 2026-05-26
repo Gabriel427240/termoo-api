@@ -3,6 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\JogoController;
 
-Route::post('/iniciar-jogo', [JogoController::class, 'iniciarJogo']);
+Route::post('/jogos', [JogoController::class, 'iniciarJogo']);
 
-Route::post('/validar-tentativa', [JogoController::class, 'validarTentativa']);
+Route::post('/jogos/{idJogo}/tentativas', [JogoController::class, 'validarTentativa']);
