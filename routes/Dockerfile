@@ -2,10 +2,8 @@ FROM php:8.4-cli
 
 RUN apt-get update && apt-get install -y \
     curl zip unzip git \
-    sqlite3 \
-    libsqlite3-dev \
-    libcurl4-openssl-dev \
-    && docker-php-ext-install curl pdo pdo_sqlite
+    sqlite3 libsqlite3-dev \
+    && docker-php-ext-install pdo pdo_sqlite
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -15,15 +13,15 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-RUN cp .env.example .env \
-    && touch database/database.sqlite \
-    && chmod -R 777 database \
-    && chmod -R 777 storage \
-    && chmod -R 777 bootstrap/cache \
-    && php artisan key:generate \
-    && php artisan config:clear \
-    && php artisan cache:clear \
-    && php artisan migrate --force
+RUN cp .env.example .env
+
+RUN php artisan key:generate
+
+RUN mkdir -p database
+
+RUN touch database/database.sqlite
+
+RUN php artisan migrate --force
 
 EXPOSE 8080
 
