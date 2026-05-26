@@ -55,7 +55,7 @@ class JogoController extends Controller
         $todasAsPalavras = config('dicionario');
 
         if (
-            strlen($palavraChutada) !== 5 ||
+            mb_strlen($palavraChutada) !== 5 ||
             !in_array($palavraChutada, $todasAsPalavras)
         ) {
             return response()->json([
