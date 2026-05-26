@@ -31,8 +31,10 @@ class JogoController extends Controller
     }
 
     // VALIDAR TENTATIVA
-    public function validarTentativa(Request $request, $idJogo)
+    public function validarTentativa(Request $request)
     {
+        $idJogo = $request->input('idJogo');
+
         $palavraChutada = strtolower($request->input('palavra'));
 
         // Buscar jogo
@@ -66,6 +68,7 @@ class JogoController extends Controller
 
         // Comparar letras
         $letrasSecretas = str_split($jogo->palavra_secreta);
+
         $letrasChutadas = str_split($palavraChutada);
 
         $resultado = [];
