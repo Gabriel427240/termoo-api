@@ -9,3 +9,4 @@ Route::post('/iniciar-jogo', [JogoController::class, 'iniciarJogo']);
 
 // Rota para validar uma tentativa (precisa receber o id do jogo)
 Route::post('/validar-tentativa/{idJogo}', [JogoController::class, 'validarTentativa']);
+
