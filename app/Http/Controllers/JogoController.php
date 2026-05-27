@@ -17,29 +17,27 @@ class JogoController extends Controller
     public function show($id)
     {
         $jogo = Jogo::findOrFail($id);
+
         return response()->json($jogo, 200);
     }
 
     // Cria um jogo manualmente
     public function store(Request $request)
     {
-        $data = $request->all();
-
-        // Se não mandar id, gera automaticamente
-        if (!isset($data['id'])) {
-            $data['id'] = uniqid();
-        }
-
-        $jogo = Jogo::create($data);
-
-        return response()->json($jogo, 201);
+        return response()->json([
+            'success' => true,
+            'mensagem' => 'POST funcionando',
+            'dados_recebidos' => $request->all()
+        ], 200);
     }
 
     // Atualiza um jogo
     public function update(Request $request, $id)
     {
         $jogo = Jogo::findOrFail($id);
+
         $jogo->update($request->all());
+
         return response()->json($jogo, 200);
     }
 
@@ -47,7 +45,9 @@ class JogoController extends Controller
     public function destroy($id)
     {
         $jogo = Jogo::findOrFail($id);
+
         $jogo->delete();
+
         return response()->json(null, 204);
     }
 
@@ -55,6 +55,7 @@ class JogoController extends Controller
     public function iniciarJogo()
     {
         $dicionario = config('dicionario');
+
         $palavra = $dicionario[array_rand($dicionario)];
 
         $jogo = Jogo::create([
@@ -70,9 +71,11 @@ class JogoController extends Controller
     public function validarTentativa(Request $request, $idJogo)
     {
         $jogo = Jogo::findOrFail($idJogo);
+
         $palpite = $request->input('palpite');
 
         if ($palpite === $jogo->palavra_secreta) {
+
             return response()->json([
                 'mensagem' => 'Parabéns, você acertou!',
                 'jogo' => $jogo
@@ -80,6 +83,7 @@ class JogoController extends Controller
         }
 
         $jogo->tentativas_restantes -= 1;
+
         $jogo->save();
 
         return response()->json([
