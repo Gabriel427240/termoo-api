@@ -16,79 +16,160 @@ class JogoController extends Controller
     // Mostra um jogo específico
     public function show($id)
     {
-        $jogo = Jogo::findOrFail($id);
+        $jogo = Jogo::find($id);
+
+        if (!$jogo) {
+            return response()->json([
+                'success' => false,
+                'mensagem' => 'Jogo não encontrado'
+            ], 404);
+        }
 
         return response()->json($jogo, 200);
     }
 
-    // Cria um jogo manualmente
+    // Cria um jogo
     public function store(Request $request)
     {
-        return response()->json([
-            'success' => true,
-            'mensagem' => 'POST funcionando',
-            'dados_recebidos' => $request->all()
-        ], 200);
+        try {
+
+            $jogo = Jogo::create([
+                'id' => uniqid(),
+                'palavra_secreta' => 'teste',
+                'tentativas_restantes' => 6
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'jogo' => $jogo
+            ], 201);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'erro' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Atualiza um jogo
     public function update(Request $request, $id)
     {
-        $jogo = Jogo::findOrFail($id);
+        $jogo = Jogo::find($id);
+
+        if (!$jogo) {
+            return response()->json([
+                'success' => false,
+                'mensagem' => 'Jogo não encontrado'
+            ], 404);
+        }
 
         $jogo->update($request->all());
 
-        return response()->json($jogo, 200);
+        return response()->json([
+            'success' => true,
+            'jogo' => $jogo
+        ], 200);
     }
 
-    // Apaga um jogo
+    // Remove um jogo
     public function destroy($id)
     {
-        $jogo = Jogo::findOrFail($id);
+        $jogo = Jogo::find($id);
+
+        if (!$jogo) {
+            return response()->json([
+                'success' => false,
+                'mensagem' => 'Jogo não encontrado'
+            ], 404);
+        }
 
         $jogo->delete();
 
-        return response()->json(null, 204);
+        return response()->json([
+            'success' => true,
+            'mensagem' => 'Jogo removido com sucesso'
+        ], 200);
     }
 
-    // Inicia jogo sorteando palavra
+    // Inicia jogo automaticamente
     public function iniciarJogo()
     {
-        $dicionario = config('dicionario');
+        try {
 
-        $palavra = $dicionario[array_rand($dicionario)];
+            $dicionario = config('dicionario');
 
-        $jogo = Jogo::create([
-            'id' => uniqid(),
-            'palavra_secreta' => $palavra,
-            'tentativas_restantes' => 6
-        ]);
+            $palavra = $dicionario[array_rand($dicionario)];
 
-        return response()->json($jogo, 201);
+            $jogo = Jogo::create([
+                'id' => uniqid(),
+                'palavra_secreta' => $palavra,
+                'tentativas_restantes' => 6
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'jogo' => $jogo
+            ], 201);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'erro' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Valida tentativa
     public function validarTentativa(Request $request, $idJogo)
     {
-        $jogo = Jogo::findOrFail($idJogo);
+        try {
 
-        $palpite = $request->input('palpite');
+            $jogo = Jogo::find($idJogo);
 
-        if ($palpite === $jogo->palavra_secreta) {
+            if (!$jogo) {
+                return response()->json([
+                    'success' => false,
+                    'mensagem' => 'Jogo não encontrado'
+                ], 404);
+            }
+
+            $palpite = $request->input('palpite');
+
+            if (!$palpite) {
+                return response()->json([
+                    'success' => false,
+                    'mensagem' => 'Palpite não enviado'
+                ], 400);
+            }
+
+            if ($palpite === $jogo->palavra_secreta) {
+
+                return response()->json([
+                    'success' => true,
+                    'mensagem' => 'Parabéns, você acertou!',
+                    'jogo' => $jogo
+                ], 200);
+            }
+
+            $jogo->tentativas_restantes -= 1;
+
+            $jogo->save();
 
             return response()->json([
-                'mensagem' => 'Parabéns, você acertou!',
-                'jogo' => $jogo
+                'success' => false,
+                'mensagem' => 'Palpite errado!',
+                'tentativas_restantes' => $jogo->tentativas_restantes
             ], 200);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'erro' => $e->getMessage()
+            ], 500);
         }
-
-        $jogo->tentativas_restantes -= 1;
-
-        $jogo->save();
-
-        return response()->json([
-            'mensagem' => 'Palpite errado!',
-            'tentativas_restantes' => $jogo->tentativas_restantes
-        ], 200);
     }
 }
