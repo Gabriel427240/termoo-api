@@ -20,7 +20,6 @@ class JogoController extends Controller
 
         if (!$jogo) {
             return response()->json([
-                'success' => false,
                 'mensagem' => 'Jogo não encontrado'
             ], 404);
         }
@@ -39,15 +38,11 @@ class JogoController extends Controller
                 'tentativas_restantes' => 6
             ]);
 
-            return response()->json([
-                'success' => true,
-                'jogo' => $jogo
-            ], 201);
+            return response()->json($jogo, 201);
 
         } catch (\Exception $e) {
 
             return response()->json([
-                'success' => false,
                 'erro' => $e->getMessage()
             ], 500);
         }
@@ -60,17 +55,13 @@ class JogoController extends Controller
 
         if (!$jogo) {
             return response()->json([
-                'success' => false,
                 'mensagem' => 'Jogo não encontrado'
             ], 404);
         }
 
         $jogo->update($request->all());
 
-        return response()->json([
-            'success' => true,
-            'jogo' => $jogo
-        ], 200);
+        return response()->json($jogo, 200);
     }
 
     // Remove um jogo
@@ -80,7 +71,6 @@ class JogoController extends Controller
 
         if (!$jogo) {
             return response()->json([
-                'success' => false,
                 'mensagem' => 'Jogo não encontrado'
             ], 404);
         }
@@ -88,7 +78,6 @@ class JogoController extends Controller
         $jogo->delete();
 
         return response()->json([
-            'success' => true,
             'mensagem' => 'Jogo removido com sucesso'
         ], 200);
     }
@@ -108,15 +97,11 @@ class JogoController extends Controller
                 'tentativas_restantes' => 6
             ]);
 
-            return response()->json([
-                'success' => true,
-                'jogo' => $jogo
-            ], 201);
+            return response()->json($jogo, 201);
 
         } catch (\Exception $e) {
 
             return response()->json([
-                'success' => false,
                 'erro' => $e->getMessage()
             ], 500);
         }
@@ -131,7 +116,6 @@ class JogoController extends Controller
 
             if (!$jogo) {
                 return response()->json([
-                    'success' => false,
                     'mensagem' => 'Jogo não encontrado'
                 ], 404);
             }
@@ -140,26 +124,27 @@ class JogoController extends Controller
 
             if (!$palpite) {
                 return response()->json([
-                    'success' => false,
                     'mensagem' => 'Palpite não enviado'
                 ], 400);
             }
 
+            // Acertou
             if ($palpite === $jogo->palavra_secreta) {
 
                 return response()->json([
-                    'success' => true,
+                    'acertou' => true,
                     'mensagem' => 'Parabéns, você acertou!',
                     'jogo' => $jogo
                 ], 200);
             }
 
+            // Errou
             $jogo->tentativas_restantes -= 1;
 
             $jogo->save();
 
             return response()->json([
-                'success' => false,
+                'acertou' => false,
                 'mensagem' => 'Palpite errado!',
                 'tentativas_restantes' => $jogo->tentativas_restantes
             ], 200);
@@ -167,7 +152,6 @@ class JogoController extends Controller
         } catch (\Exception $e) {
 
             return response()->json([
-                'success' => false,
                 'erro' => $e->getMessage()
             ], 500);
         }
