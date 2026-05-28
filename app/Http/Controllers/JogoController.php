@@ -2,161 +2,174 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Jogo;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class JogoController extends Controller
 {
-    // Lista todos os jogos
-    public function index()
+    private const TAMANHO_PALAVRA = 5;
+    private const TENTATIVAS_MAXIMAS = 6;
+
+    public function iniciarJogo(): JsonResponse
     {
-        return response()->json(Jogo::all(), 200);
-    }
-
-    // Mostra um jogo específico
-    public function show($id)
-    {
-        $jogo = Jogo::find($id);
-
-        if (!$jogo) {
-            return response()->json([
-                'mensagem' => 'Jogo não encontrado'
-            ], 404);
-        }
-
-        return response()->json($jogo, 200);
-    }
-
-    // Cria um novo jogo
-    public function store(Request $request)
-    {
-        try {
-
-            $jogo = Jogo::create([
-                'id' => uniqid(),
-                'palavra_secreta' => 'teste',
-                'tentativas_restantes' => 6
-            ]);
-
-            // IMPORTANTE:
-            // retorna o jogo DIRETO
-            // sem "success" ou "jogo"
-            return response()->json($jogo, 201);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'erro' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    // Atualiza jogo
-    public function update(Request $request, $id)
-    {
-        $jogo = Jogo::find($id);
-
-        if (!$jogo) {
-            return response()->json([
-                'mensagem' => 'Jogo não encontrado'
-            ], 404);
-        }
-
-        $jogo->update($request->all());
-
-        return response()->json($jogo, 200);
-    }
-
-    // Remove jogo
-    public function destroy($id)
-    {
-        $jogo = Jogo::find($id);
-
-        if (!$jogo) {
-            return response()->json([
-                'mensagem' => 'Jogo não encontrado'
-            ], 404);
-        }
-
-        $jogo->delete();
+        $jogo = Jogo::create([
+            'id' => (string) Str::uuid(),
+            'palavra_secreta' => $this->sortearPalavra(),
+            'tentativas_restantes' => self::TENTATIVAS_MAXIMAS,
+            'venceu' => false,
+        ]);
 
         return response()->json([
-            'mensagem' => 'Jogo removido com sucesso'
+            'idJogo' => $jogo->id,
+            'tamanhoPalavra' => self::TAMANHO_PALAVRA,
+            'tentativasMaximas' => self::TENTATIVAS_MAXIMAS,
         ], 200);
     }
 
-    // Inicia jogo automaticamente
-    public function iniciarJogo()
+    public function validarTentativa(Request $request): JsonResponse
     {
-        try {
+        $idJogo = $request->input('idJogo');
+        $palavra = $this->obterPalavraDaRequisicao($request);
 
-            $dicionario = config('dicionario');
-
-            $palavra = $dicionario[array_rand($dicionario)];
-
-            $jogo = Jogo::create([
-                'id' => uniqid(),
-                'palavra_secreta' => $palavra,
-                'tentativas_restantes' => 6
-            ]);
-
-            return response()->json($jogo, 201);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'erro' => $e->getMessage()
-            ], 500);
+        if (!$idJogo || !$palavra) {
+            return $this->erro('Informe idJogo e palavra.', 400);
         }
+
+        return $this->validarPalavra($idJogo, $palavra);
     }
 
-    // Valida tentativa
-    public function validarTentativa(Request $request, $id)
+    public function validarTentativaPorJogo(Request $request, string $idJogo): JsonResponse
     {
-        try {
+        $palavra = $this->obterPalavraDaRequisicao($request);
 
-            $jogo = Jogo::find($id);
-
-            if (!$jogo) {
-                return response()->json([
-                    'mensagem' => 'Jogo não encontrado'
-                ], 404);
-            }
-
-            $palpite = $request->input('palpite');
-
-            if (!$palpite) {
-                return response()->json([
-                    'mensagem' => 'Palpite não enviado'
-                ], 400);
-            }
-
-            // Acertou
-            if ($palpite === $jogo->palavra_secreta) {
-
-                return response()->json([
-                    'acertou' => true,
-                    'mensagem' => 'Parabéns, você acertou!',
-                    'jogo' => $jogo
-                ], 200);
-            }
-
-            // Errou
-            $jogo->tentativas_restantes -= 1;
-
-            $jogo->save();
-
-            return response()->json([
-                'acertou' => false,
-                'mensagem' => 'Palpite errado!',
-                'tentativas_restantes' => $jogo->tentativas_restantes
-            ], 200);
-
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'erro' => $e->getMessage()
-            ], 500);
+        if (!$palavra) {
+            return $this->erro('Informe a palavra.', 400);
         }
+
+        return $this->validarPalavra($idJogo, $palavra);
+    }
+
+    private function validarPalavra(string $idJogo, string $palavra): JsonResponse
+    {
+        $jogo = Jogo::find($idJogo);
+
+        if (!$jogo) {
+            return $this->erro('Jogo não encontrado.', 404);
+        }
+
+        if (!$this->temCincoLetras($palavra)) {
+            return $this->erro('A palavra deve ter exatamente 5 letras.', 400);
+        }
+
+        if ($jogo->venceu || $jogo->tentativas_restantes <= 0) {
+            return $this->erro('Esta partida já foi encerrada.', 400);
+        }
+
+        $dicionario = $this->carregarDicionario();
+        $palavraValida = in_array($palavra, $dicionario, true);
+
+        if (!$palavraValida) {
+            return response()->json([
+                'resultado' => [],
+                'venceu' => false,
+                'tentativasRestantes' => $jogo->tentativas_restantes,
+                'palavraValida' => false,
+            ], 200);
+        }
+
+        $resultado = $this->compararPalavras($palavra, $jogo->palavra_secreta);
+        $venceu = $palavra === $jogo->palavra_secreta;
+
+        $jogo->tentativas_restantes--;
+        $jogo->venceu = $venceu;
+        $jogo->save();
+
+        return response()->json([
+            'resultado' => $resultado,
+            'venceu' => $venceu,
+            'tentativasRestantes' => $jogo->tentativas_restantes,
+            'palavraValida' => true,
+        ], 200);
+    }
+
+    private function compararPalavras(string $tentativa, string $palavraSecreta): array
+    {
+        $letrasTentativa = mb_str_split($tentativa);
+        $letrasSecretas = mb_str_split($palavraSecreta);
+        $resultado = [];
+        $letrasRestantes = [];
+
+        for ($i = 0; $i < self::TAMANHO_PALAVRA; $i++) {
+            $resultado[$i] = [
+                'letra' => $letrasTentativa[$i],
+                'status' => 'ausente',
+            ];
+
+            if ($letrasTentativa[$i] === $letrasSecretas[$i]) {
+                $resultado[$i]['status'] = 'correta';
+            } else {
+                $letra = $letrasSecretas[$i];
+                $letrasRestantes[$letra] = ($letrasRestantes[$letra] ?? 0) + 1;
+            }
+        }
+
+        for ($i = 0; $i < self::TAMANHO_PALAVRA; $i++) {
+            if ($resultado[$i]['status'] === 'correta') {
+                continue;
+            }
+
+            $letra = $letrasTentativa[$i];
+
+            if (($letrasRestantes[$letra] ?? 0) > 0) {
+                $resultado[$i]['status'] = 'presente';
+                $letrasRestantes[$letra]--;
+            }
+        }
+
+        return $resultado;
+    }
+
+    private function carregarDicionario(): array
+    {
+        $palavras = config('dicionario', []);
+
+        $palavras = array_map(fn ($palavra) => $this->normalizarPalavra($palavra), $palavras);
+        $palavras = array_filter($palavras, fn (string $palavra) => $this->temCincoLetras($palavra));
+
+        return array_values(array_unique($palavras));
+    }
+
+    private function sortearPalavra(): string
+    {
+        $dicionario = $this->carregarDicionario();
+
+        return $dicionario[array_rand($dicionario)];
+    }
+
+    private function obterPalavraDaRequisicao(Request $request): string
+    {
+        return $this->normalizarPalavra(
+            $request->input('palavra')
+                ?? $request->input('tentativa')
+                ?? $request->input('palpite')
+        );
+    }
+
+    private function normalizarPalavra(mixed $palavra): string
+    {
+        return mb_strtolower(trim((string) $palavra), 'UTF-8');
+    }
+
+    private function temCincoLetras(string $palavra): bool
+    {
+        return mb_strlen($palavra, 'UTF-8') === self::TAMANHO_PALAVRA
+            && preg_match('/^[a-záàâãéêíóôõúç]+$/iu', $palavra) === 1;
+    }
+
+    private function erro(string $mensagem, int $status): JsonResponse
+    {
+        return response()->json(['error' => $mensagem], $status);
     }
 }
