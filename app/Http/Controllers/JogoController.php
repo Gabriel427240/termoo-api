@@ -27,7 +27,7 @@ class JogoController extends Controller
         return response()->json($jogo, 200);
     }
 
-    // Cria um jogo
+    // Cria um novo jogo
     public function store(Request $request)
     {
         try {
@@ -38,6 +38,9 @@ class JogoController extends Controller
                 'tentativas_restantes' => 6
             ]);
 
+            // IMPORTANTE:
+            // retorna o jogo DIRETO
+            // sem "success" ou "jogo"
             return response()->json($jogo, 201);
 
         } catch (\Exception $e) {
@@ -48,7 +51,7 @@ class JogoController extends Controller
         }
     }
 
-    // Atualiza um jogo
+    // Atualiza jogo
     public function update(Request $request, $id)
     {
         $jogo = Jogo::find($id);
@@ -64,7 +67,7 @@ class JogoController extends Controller
         return response()->json($jogo, 200);
     }
 
-    // Remove um jogo
+    // Remove jogo
     public function destroy($id)
     {
         $jogo = Jogo::find($id);
@@ -108,11 +111,11 @@ class JogoController extends Controller
     }
 
     // Valida tentativa
-    public function validarTentativa(Request $request, $idJogo)
+    public function validarTentativa(Request $request, $id)
     {
         try {
 
-            $jogo = Jogo::find($idJogo);
+            $jogo = Jogo::find($id);
 
             if (!$jogo) {
                 return response()->json([

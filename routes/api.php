@@ -21,3 +21,4 @@ Route::delete('/jogos/{id}', [JogoController::class, 'destroy']); // Apaga um jo
 // Rotas personalizadas para lógica do jogo
 Route::post('/iniciar-jogo', [JogoController::class, 'iniciarJogo']);  
 Route::post('/validar-tentativa/{idJogo}', [JogoController::class, 'validarTentativa']);
+Route::post('/jogos/{id}/tentativas', [JogoController::class, 'validarTentativa']);
